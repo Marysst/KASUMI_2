@@ -201,11 +201,12 @@ def tests_kasumi():
         for _ in range(iterations):
             result_int = KASUMI_EncryptBlock(result_int, key_int)
 
-        if result_int == output_int:
-            print(f"{vector['name']} - PASSED")
-            passed += 1
-        else:
-            print(f"{vector['name']} - FAILED: got {result_int.hex().upper()}, expected {output_int.hex().upper()}")
+        try:
+          assert result_int == output_int
+          print(f"{vector['name']} - PASSED")
+          passed += 1
+        except AssertionError as e:
+            print(f"{vector['name']} - FAILED: got {hex(result_int)[2:].upper()}, expected {hex(output_int)[2:].upper()}")
             failed += 1
 
     print("\n==== Test Summary ====")
