@@ -58,5 +58,8 @@ def tests_kasumi():
     print(f"Passed: {passed}")
     print(f"Failed: {failed}")
 
+    if failed > 0:
+        exit(1)
+
 if __name__ == "__main__":
     tests_kasumi()
