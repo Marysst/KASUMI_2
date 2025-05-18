@@ -16,7 +16,7 @@ def tests_kasumi():
             "name": "Test Set 2",
             "key": "8CE33E2CC3C0B5FC1F3DE8A6DC66B1F3",
             "input": "D3C5D592327FB11C",
-            "output": "DE551988CEB2F9B8"
+            "output": "DE551988CEB2F9B7"
         },
         {
             "name": "Test Set 3",
