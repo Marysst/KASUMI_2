@@ -26,5 +26,5 @@ jobs:
 
       - name: Run KASUMI tests
         run: |
-          python tests/KASUMI_tests.py
           python tests/KASUMI_unittest.py
+          python tests/KASUMI_tests.py
