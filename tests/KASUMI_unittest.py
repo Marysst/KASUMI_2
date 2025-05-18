@@ -35,3 +35,6 @@ class TestKASUMIEncryption(unittest.TestCase):
         for _ in range(50):
             result = KASUMI_EncryptBlock(result, key)
         self.assertEqual(result, output)
+
+if __name__ == '__main__':
+    unittest.main()
