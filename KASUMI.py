@@ -44,7 +44,7 @@ def ZE(x):
     return x & 0x7F
 
 def TR(x):
-    return x & 0x7F #Достатньо переконатись, що вхідне значення було 7-бітним — Python автоматично доповнює його нулями зліва до необхідної довжини
+    return x & 0x7F
 
 def FI(I, KI):
     L0 = I >> 7
@@ -91,3 +91,123 @@ def FL(I, KL):
 
 def ROL(x, n=1):
     return ((x << n) | (x >> (16 - n))) & 0xFFFF
+
+def fi(I, RKi, round_num):
+  if round_num % 2 == 1:
+    return FO(FL(I, RKi["KL"]), RKi["KO"], RKi["KI"])
+  else:
+    return FL(FO(I, RKi["KO"], RKi["KI"]), RKi["KL"])
+
+def KeySchedule(K):
+  K1 = K >> 16*7
+  K2 = (K >> 16*6) & 0xFFFF
+  K3 = (K >> 16*5) & 0xFFFF
+  K4 = (K >> 16*4) & 0xFFFF
+  K5 = (K >> 16*3) & 0xFFFF
+  K6 = (K >> 16*2) & 0xFFFF
+  K7 = (K >> 16) & 0xFFFF
+  K8 = K & 0xFFFF
+  Ks = [K1, K2, K3, K4, K5, K6, K7, K8]
+
+  C = [0x0123, 0x4567, 0x89AB, 0xCDEF, 0xFEDC, 0xBA98, 0x7654, 0x3210]
+
+  Knew = [0] * 8
+  for i in range(0, 8):
+    Knew[i] = Ks[i] ^ C[i]
+
+  keys = {}
+  for i in range(0, 8):
+    KL = [0] * 2
+    KO = [0] * 3
+    KI = [0] * 3
+
+    KL[0] = ROL(Ks[i])
+    KL[1] = Knew[i+2 if i+2 <= 7 else i+2-8]
+
+    KO[0] = ROL(Ks[i+1 if i+1 <= 7 else i+1-8], 5)
+    KO[1] = ROL(Ks[i+5 if i+5 <= 7 else i+5-8], 8)
+    KO[2] = ROL(Ks[i+6 if i+6 <= 7 else i+6-8], 13)
+
+    KI[0] = Knew[i+4 if i+4 <= 7 else i+4-8]
+    KI[1] = Knew[i+3 if i+3 <= 7 else i+3-8]
+    KI[2] = Knew[i+7 if i+7 <= 7 else i+7-8]
+
+    keys[i+1] = {"KL": KL, "KO": KO, "KI": KI}
+  return keys
+
+def KASUMI_EncryptBlock(I, K):
+  L0 = I >> 32
+  R0 = I & 0xFFFFFFFF
+
+  RK = KeySchedule(K)
+
+  R, L = R0, L0
+  for i in range(0, 8):
+    R, L = L, R ^ fi(L, RK[i+1], i+1)
+
+  return (L << 32) | R
+
+def KASUMI_DecryptBlock(I, K):
+  L0 = I >> 32
+  R0 = I & 0xFFFFFFFF
+
+  RK = KeySchedule(K)
+
+  R, L = R0, L0
+  for i in reversed(range(0, 8)):
+    L, R = R, L ^ fi(R, RK[i+1], i+1)
+
+  return (L << 32) | R
+
+def KASUMI_EncryptData(I, K):
+    block_size = 8
+    output = bytearray()
+
+    try:
+        key_bytes = bytes.fromhex(K)
+        if len(key_bytes) != 16:
+            raise ValueError
+    except ValueError:
+        return False, "Key must be exactly 16 bytes (32 hex characters)"
+
+    K_int = int(K, 16)
+
+    # Вирівнювання: додаємо 0-байти до кратності 8
+    if len(I) % block_size != 0:
+        padding = block_size - (len(I) % block_size)
+        I += b'\x00' * padding
+
+    for i in range(0, len(I), block_size):
+        block = I[i:i+block_size]
+        block_int = int.from_bytes(block, 'big')
+        encrypted_block = KASUMI_EncryptBlock(block_int, K_int)
+        output.extend(encrypted_block.to_bytes(block_size, 'big'))
+
+    return True, bytes(output)
+
+def KASUMI_DecryptData(I, K):
+    block_size = 8
+    output = bytearray()
+
+    try:
+        key_bytes = bytes.fromhex(K)
+        if len(key_bytes) != 16:
+            raise ValueError
+    except ValueError:
+        return False, "Key must be exactly 16 bytes (32 hex characters)"
+
+    K_int = int(K, 16)
+
+    try:
+        if len(I) % block_size != 0:
+          raise ValueError
+    except ValueError:
+        return False, "The file is corrupted. Data length is not a multiple of 8 bytes"
+
+    for i in range(0, len(I), block_size):
+        block = I[i:i+block_size]
+        block_int = int.from_bytes(block, 'big')
+        decrypted_block = KASUMI_DecryptBlock(block_int, K_int)
+        output.extend(decrypted_block.to_bytes(block_size, 'big'))
+
+    return True, bytes(output)
